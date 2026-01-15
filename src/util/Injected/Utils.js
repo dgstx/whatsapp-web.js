@@ -11,27 +11,13 @@ exports.LoadUtils = () => {
 
     window.WWebJS.sendSeen = async (chatId) => {
         const chat = await window.WWebJS.getChat(chatId, { getAsModel: false });
-        if (!chat) {
-            return false;
-        }
-
-        try {
+        if (chat) {
             window.Store.WAWebStreamModel.Stream.markAvailable();
-            // FIX: WhatsApp Web substituiu sendSeen() por markSeen()
-            // Ref: https://github.com/pedroslopez/whatsapp-web.js/pull/5719
             await window.Store.SendSeen.markSeen(chat);
             window.Store.WAWebStreamModel.Stream.markUnavailable();
             return true;
-        } catch (err) {
-            // Fallback: se markSeen também falhar (WhatsApp mudou novamente)
-            // Ref: https://github.com/pedroslopez/whatsapp-web.js/issues/5718
-            console.warn('[WWebJS] Could not mark chat as seen:', err.message);
-            try {
-                window.Store.WAWebStreamModel.Stream.markUnavailable();
-            } catch (e) {
-            }
-            return false;
         }
+        return false;
     };
 
     window.WWebJS.sendMessage = async (chat, content, options = {}) => {
