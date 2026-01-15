@@ -17,14 +17,15 @@ exports.LoadUtils = () => {
 
         try {
             window.Store.WAWebStreamModel.Stream.markAvailable();
-            await window.Store.SendSeen.sendSeen(chat);
+            // FIX: WhatsApp Web substituiu sendSeen() por markSeen()
+            // Ref: https://github.com/pedroslopez/whatsapp-web.js/pull/5719
+            await window.Store.SendSeen.markSeen(chat);
             window.Store.WAWebStreamModel.Stream.markUnavailable();
             return true;
         } catch (err) {
-            // A estrutura interna do WhatsApp Web foi alterada (propriedade `markedUnread` ausente)
-            // Este é um problema conhecido: https://github.com/pedroslopez/whatsapp-web.js/issues/5718
-            // Trata o erro de forma adequada para evitar falhas do aplicativo
-            console.warn('[WWebJS] Could not mark chat as seen. WhatsApp Web structure may have changed:', err.message);
+            // Fallback: se markSeen também falhar (WhatsApp mudou novamente)
+            // Ref: https://github.com/pedroslopez/whatsapp-web.js/issues/5718
+            console.warn('[WWebJS] Could not mark chat as seen:', err.message);
             try {
                 window.Store.WAWebStreamModel.Stream.markUnavailable();
             } catch (e) {
