@@ -13,10 +13,16 @@ exports.LoadUtils = () => {
         const chat = await window.WWebJS.getChat(chatId, { getAsModel: false });
         if (chat) {
             window.Store.WAWebStreamModel.Stream.markAvailable();
-            await window.Store.SendSeen.sendSeen({
-                chat: chat,
-                threadId: undefined
-            });
+
+            if (window.compareWwebVersions(window.Debug.VERSION, '<=', '2.3000.1031980585')) {
+                await window.Store.SendSeen.sendSeen(chat);
+            } else {
+                await window.Store.SendSeen.sendSeen({
+                    chat: chat,
+                    threadId: undefined
+                });
+            }
+
             window.Store.WAWebStreamModel.Stream.markUnavailable();
             return true;
         }
