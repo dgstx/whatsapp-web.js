@@ -44,6 +44,20 @@ exports.ExposeStore = () => {
     };
 
     window.Store = Object.assign({}, window.require('WAWebCollections'));
+    if (!window.Store.Msg) {
+        const msgModule = window.require('WAWebMsgCollection') || window.require('WAWebMessageCollection');
+        window.Store.Msg = msgModule.Msg || msgModule;
+    }
+    if (!window.Store.Contact) {
+        const contactModule = window.require('WAWebContactCollection');
+        window.Store.Contact = contactModule.Contact || contactModule;
+    }
+    if (!window.Store.MediaCollection) window.Store.MediaCollection = window.require('WAWebMediaCollection');
+    if (!window.Store.GroupMetadata) window.Store.GroupMetadata = window.require('WAWebGroupMetadataCollection');
+    if (!window.Store.GroupCollection) window.Store.GroupCollection = window.require('WAWebGroupCollection');
+    if (!window.Store.OpaqueData) window.Store.OpaqueData = window.require('WAWebMediaOpaqueData');
+    if (!window.Store.Reactions) window.Store.Reactions = window.require('WAWebReactions');
+    if (!window.Store.BlockContact) window.Store.BlockContact = window.require('WAWebBlockContact');
     window.Store.AppState = window.require('WAWebSocketModel').Socket;
     window.Store.BlockContact = window.require('WAWebBlockContactAction');
     window.Store.Conn = window.require('WAWebConnModel').Conn;
@@ -231,7 +245,7 @@ exports.ExposeStore = () => {
     window.injectToFunction = (target, callback) => {
         try {
             let module = window.require(target.module);
-            if (!module) return; 
+            if (!module) return;
 
             const path = target.function.split('.');
             const funcName = path.pop();
