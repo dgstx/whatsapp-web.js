@@ -378,43 +378,58 @@ class Client extends EventEmitter {
             page = (await browser.pages())[0];
         }
 
-        if (this.options.proxyAuthentication !== undefined) {
-            await page.authenticate(this.options.proxyAuthentication);
+        try {
+            this.pupBrowser = browser;
+            this.pupPage = page;
+
+            if (this.options.proxyAuthentication !== undefined) {
+                await page.authenticate(this.options.proxyAuthentication);
+            }
+            if (this.options.userAgent !== false) {
+                await page.setUserAgent(this.options.userAgent);
+            }
+            if (this.options.bypassCSP) await page.setBypassCSP(true);
+
+            await this.authStrategy.afterBrowserInitialized();
+            await this.initWebVersionCache();
+
+            if (this.options.evalOnNewDoc !== undefined) {
+                await page.evaluateOnNewDocument(this.options.evalOnNewDoc);
+            }
+
+            // ocVersion (isOfficialClient patch)
+            // remove after 2.3000.x hard release
+            await page.evaluateOnNewDocument(() => {
+                const originalError = Error;
+                window.originalError = originalError;
+                //eslint-disable-next-line no-global-assign
+                Error = function (message) {
+                    const error = new originalError(message);
+                    const originalStack = error.stack;
+                    if (error.stack.includes('moduleRaid')) error.stack = originalStack + '\n    at https://web.whatsapp.com/vendors~lazy_loaded_low_priority_components.05e98054dbd60f980427.js:2:44';
+                    return error;
+                };
+            });
+
+            await page.goto(WhatsWebURL, {
+                waitUntil: 'load',
+                timeout: 0,
+                referer: 'https://whatsapp.com/'
+            });
+        } catch (error) {
+            this.pupPage = null;
+            this.pupBrowser = null;
+
+            if (browser) {
+                try {
+                    await browser.close();
+                } catch (e) {
+                    // fallback: mata o processo do chrome (evita zumbi)
+                    try { await browser.process()?.kill('SIGKILL'); } catch (_) { }
+                }
+            }
+            throw error;
         }
-        if (this.options.userAgent !== false) {
-            await page.setUserAgent(this.options.userAgent);
-        }
-        if (this.options.bypassCSP) await page.setBypassCSP(true);
-
-        this.pupBrowser = browser;
-        this.pupPage = page;
-
-        await this.authStrategy.afterBrowserInitialized();
-        await this.initWebVersionCache();
-
-        if (this.options.evalOnNewDoc !== undefined) {
-            await page.evaluateOnNewDocument(this.options.evalOnNewDoc);
-        }
-
-        // ocVersion (isOfficialClient patch)
-        // remove after 2.3000.x hard release
-        await page.evaluateOnNewDocument(() => {
-            const originalError = Error;
-            window.originalError = originalError;
-            //eslint-disable-next-line no-global-assign
-            Error = function (message) {
-                const error = new originalError(message);
-                const originalStack = error.stack;
-                if (error.stack.includes('moduleRaid')) error.stack = originalStack + '\n    at https://web.whatsapp.com/vendors~lazy_loaded_low_priority_components.05e98054dbd60f980427.js:2:44';
-                return error;
-            };
-        });
-
-        await page.goto(WhatsWebURL, {
-            waitUntil: 'load',
-            timeout: 0,
-            referer: 'https://whatsapp.com/'
-        });
 
         await this.inject();
 
@@ -969,7 +984,7 @@ class Client extends EventEmitter {
             // Give browser time to flush any pending IndexedDB writes
             await new Promise(resolve => setTimeout(resolve, 3000));
         }
-        await this.pupBrowser.close();
+        if (this.pupBrowser) await this.pupBrowser.close();
         await this.authStrategy.destroy();
     }
 
