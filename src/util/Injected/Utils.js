@@ -142,13 +142,12 @@ exports.LoadUtils = () => {
             let quotedMessage = (window.require('WAWebCollections')).Msg.get(options.quotedMessageId);
             !quotedMessage && (quotedMessage = (await (window.require('WAWebCollections')).Msg.getMessagesById([options.quotedMessageId]))?.messages?.[0]);
             if (quotedMessage) {
-
                 const ReplyUtils = window.require('WAWebMsgReply');
                 const canReply = ReplyUtils
                     ? ReplyUtils.canReplyMsg(quotedMessage.unsafe())
                     : quotedMessage.canReply();
 
-                if (canReply) {
+                if (canReply || ['chat', 'image', 'video', 'audio', 'ptt', 'sticker', 'document'].includes(quotedMessage.type)) {
                     quotedMsgOptions = quotedMessage.msgContextInfo(chat);
                 }
             } else {
@@ -841,7 +840,16 @@ exports.LoadUtils = () => {
 
     window.WWebJS.getContacts = () => {
         const contacts = (window.require('WAWebCollections')).Contact.getModelsArray();
-        return contacts.map(contact => window.WWebJS.getContactModel(contact));
+        return Promise.all(
+            contacts.map(async (contact) => {
+                if (contact.isBusiness || contact.isEnterprise) {
+                    await (window.require('WAWebCollections'))
+                        .BusinessProfile.find(contact.id)
+                        .catch(() => {});
+                }
+                return window.WWebJS.getContactModel(contact);
+            }),
+        );
     };
 
     window.WWebJS.mediaInfoToFile = ({ data, mimetype, filename }) => {
